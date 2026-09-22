@@ -676,6 +676,11 @@ const ChatPage = () => {
         entryTitle ?? sessionStorage.getItem("entryTitle") ?? null,
         modelInstructions,
       );
+
+      if (configBestEffortSystemCache) {
+        devLog("Caching system message", "info", { characterDataName: characterData?.name, associatedDomain, entryTitle, modelInstructionsLength: modelInstructions.length });
+        setCachedSystemP(systemPrompt);
+      }
     }
 
     // hopefully doesnt break anything further
