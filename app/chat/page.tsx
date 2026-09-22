@@ -169,6 +169,12 @@ const ChatPage = () => {
   const [modelName, setModelName] = useState("");
   const isSettingsOpen = useChatSettingsScaleEffectStore(useCallback(state => state.isSettingsOpen, []));
 
+  // Best Effort cache invalidation: clear stale system prompt when identity/instructions change.
+  // No fetch here, just clear — next send rebuilds via getSystemMessage().
+  useEffect(() => {
+    setCachedSystemP("");
+  }, [modelInstructions, characterData.name, associatedDomain, entryTitle, chatId]);
+
 
   const [showSuggestionBar, setShowSuggestionBar] = useState(false);
   const [suggestionBarGenerating, setSuggestionBarGenerating] = useState(false);
@@ -664,7 +670,7 @@ const ChatPage = () => {
 
 
     let systemPrompt = "";
-    if (configBestEffortSystemCache && cachedSystemP) {
+    if (configBestEffortSystemCache && cachedSystemP && !associatedDomain) {
       devLog("Using cached system message", "info", { characterDataName: characterData?.name, associatedDomain, entryTitle, modelInstructionsLength: modelInstructions.length });
       systemPrompt = cachedSystemP;
     } else {
@@ -676,6 +682,10 @@ const ChatPage = () => {
         entryTitle ?? sessionStorage.getItem("entryTitle") ?? null,
         modelInstructions,
       );
+      // Best Effort: bypass cache for domain chats to avoid stale memories/attributes
+      if (!associatedDomain) {
+        setCachedSystemP(systemPrompt);
+      }
     }
 
     // hopefully doesnt break anything further
@@ -703,7 +713,7 @@ const ChatPage = () => {
         {
           role: "user",
           name: "user",
-          content: `[SYSTEM NOTE]: Detach from the character personality, and create a reply for {{user}} in accordance to ${characterData.userName}'s personality.
+          content: `[SYSTEM NOTE]: Detach from {{char}}'s voice only — still follow DOMAIN GUIDE and world state in system prompt when present, and create a reply for {{user}} in accordance to ${characterData.userName}'s personality.
 THIS REPLY should be about the {{user}} doing this: "${rewriteBase}".
 IMPORTANT: You are REPLYING {{char}} FOR {{user}}, *NOT* BE THE CHARACTER!
 
